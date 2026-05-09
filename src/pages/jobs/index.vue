@@ -1,10 +1,19 @@
 <template>
   <div class="flex flex-col min-h-full">
     <!-- Topbar -->
-    <div class="flex items-center justify-between px-8 py-4 border-b border-koyori-border bg-white sticky top-0 z-10 shrink-0">
+    <div
+      class="flex items-center justify-between px-8 py-4 border-b border-koyori-border bg-white sticky top-0 z-10 shrink-0"
+    >
       <div>
-        <h2 class="text-[18px] font-bold text-koyori-ink m-0 leading-tight">Jobs</h2>
-        <p class="text-[13px] text-koyori-ink-3 m-0 mt-0.5">2 active · 1 queued [Dummy]</p>
+        <h2 class="text-[18px] font-bold text-koyori-ink m-0 leading-tight">
+          Jobs
+        </h2>
+        <p class="text-[13px] text-koyori-ink-3 m-0 mt-0.5">
+          <template v-if="devState === 'Default' && activeJobsQuery.data.value">
+            {{ activeJobsQuery.data.value.total }} active
+          </template>
+          <template v-else> 2 active · 1 queued [Dummy] </template>
+        </p>
       </div>
       <div class="flex gap-2">
         <NuxtLink to="/add">
@@ -14,14 +23,25 @@
     </div>
 
     <!-- Content -->
-    <div class="flex-1 p-6 px-8 max-w-[900px] w-full">
-      <div class="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-[12.5px] font-medium px-3 py-2 rounded-lg mb-5">
+    <div class="flex-1 p-6 px-8 max-w-[900px] w-full mx-auto">
+      <!-- Dev warning banner -->
+      <div
+        v-if="devState !== 'Default'"
+        class="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-[12.5px] font-medium px-3 py-2 rounded-lg mb-5"
+      >
         <i class="pi pi-exclamation-triangle text-[13px]"></i>
         Showing dummy data — backend not yet connected
       </div>
 
       <!-- Loading state -->
-      <template v-if="devState === 'Loading'">
+      <template
+        v-if="
+          devState === 'Loading' ||
+          (devState === 'Default' &&
+            (activeJobsQuery.isLoading.value ||
+              recentJobsQuery.isLoading.value))
+        "
+      >
         <div class="flex flex-col gap-2">
           <div
             v-for="i in 5"
@@ -32,18 +52,40 @@
       </template>
 
       <!-- Error state -->
-      <template v-else-if="devState === 'Error'">
+      <template
+        v-else-if="
+          devState === 'Error' ||
+          (devState === 'Default' && activeJobsQuery.isError.value)
+        "
+      >
         <div class="bg-red-50 border border-red-200 rounded-xl p-5 text-center">
-          <i class="pi pi-exclamation-circle text-[28px] text-red-600 block mb-2"></i>
-          <div class="text-[14px] font-semibold text-red-800">Failed to load jobs</div>
+          <i
+            class="pi pi-exclamation-circle text-[28px] text-red-600 block mb-2"
+          ></i>
+          <div class="text-[14px] font-semibold text-red-800">
+            Failed to load jobs
+          </div>
         </div>
       </template>
 
       <!-- Empty state -->
-      <template v-else-if="devState === 'Empty'">
+      <template
+        v-else-if="
+          devState === 'Empty' ||
+          (devState === 'Default' &&
+            activeJobsQuery.data.value &&
+            activeJobsQuery.data.value.data.length === 0 &&
+            recentJobsQuery.data.value &&
+            recentJobsQuery.data.value.data.length === 0)
+        "
+      >
         <div class="text-center py-[60px] px-5 text-koyori-ink-3">
-          <i class="pi pi-check-circle text-[40px] block mb-3 text-koyori-emerald-400"></i>
-          <div class="text-[16px] font-semibold text-koyori-ink-2 mb-1.5">No jobs running</div>
+          <i
+            class="pi pi-check-circle text-[40px] block mb-3 text-koyori-emerald-400"
+          ></i>
+          <div class="text-[16px] font-semibold text-koyori-ink-2 mb-1.5">
+            No jobs running
+          </div>
           <div class="text-[13px] mb-4">Add a stream to start processing</div>
           <NuxtLink to="/add">
             <PButton label="Add stream" icon="pi pi-plus" size="small" />
@@ -55,12 +97,14 @@
       <template v-else>
         <!-- Active section -->
         <div class="mb-1.5">
-          <div class="text-[11px] font-semibold uppercase tracking-[0.06em] text-koyori-ink-4 pb-2">
-            Active · {{ activeJobs.length }}
+          <div
+            class="text-[11px] font-semibold uppercase tracking-[0.06em] text-koyori-ink-4 pb-2"
+          >
+            Active · {{ activeJobsDisplay.length }}
           </div>
           <div class="flex flex-col gap-1.5">
             <div
-              v-for="job in activeJobs"
+              v-for="job in activeJobsDisplay"
               :key="job.id"
               class="bg-white border border-koyori-border rounded-[10px] px-4 py-3 flex items-center gap-3 transition-all duration-150 hover:shadow-koyori-sm hover:border-koyori-border-2"
             >
@@ -68,20 +112,24 @@
               <div class="shrink-0">
                 <div
                   class="w-[10px] h-[10px] rounded-full"
-                  :class="job.stage === 'queued' ? 'bg-amber-400' : 'bg-koyori-pink-400'"
-                  :style="{
-                    boxShadow: job.stage !== 'queued' ? '0 0 0 3px rgba(244,139,169,0.2)' : 'none',
-                    animation: job.stage !== 'queued' ? 'pulse-ring 2s infinite' : 'none',
-                  }"
+                  :class="
+                    job.stage === 'queued'
+                      ? 'bg-amber-400'
+                      : 'bg-koyori-pink-400'
+                  "
                 ></div>
               </div>
               <!-- Stream name -->
               <div class="flex-1 min-w-0">
-                <div class="text-[13.5px] font-semibold text-koyori-ink truncate">
+                <div
+                  class="text-[13.5px] font-semibold text-koyori-ink truncate"
+                >
                   {{ job.stream }}
                 </div>
-                <div class="mt-1.5" v-if="job.stage !== 'queued'">
-                  <div class="h-1 bg-koyori-surface-3 rounded-full overflow-hidden">
+                <div v-if="job.stage !== 'queued'" class="mt-1.5">
+                  <div
+                    class="h-1 bg-koyori-surface-3 rounded-full overflow-hidden"
+                  >
                     <div
                       class="h-full bg-gradient-to-r from-koyori-pink-400 to-koyori-pink-500 rounded-full"
                       :style="{ width: `${job.progress * 100}%` }"
@@ -95,7 +143,11 @@
               <!-- Stage chip -->
               <span
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11.5px] font-medium shrink-0"
-                :class="job.stage === 'queued' ? 'bg-koyori-surface-2 text-koyori-ink-3 border border-koyori-border' : 'bg-koyori-pink-100 text-koyori-pink-700 border border-koyori-pink-200'"
+                :class="
+                  job.stage === 'queued'
+                    ? 'bg-koyori-surface-2 text-koyori-ink-3 border border-koyori-border'
+                    : 'bg-koyori-pink-100 text-koyori-pink-700 border border-koyori-pink-200'
+                "
               >
                 {{ job.stage }}
               </span>
@@ -108,7 +160,7 @@
                   {{ (job.progress * 100).toFixed(0) }}%
                 </div>
                 <div class="text-[11.5px] text-koyori-ink-4">
-                  ETA: {{ job.eta }}
+                  ETA: {{ job.eta ?? "—" }}
                 </div>
               </div>
               <!-- Cancel button -->
@@ -116,15 +168,17 @@
                 icon="pi pi-times"
                 size="small"
                 aria-label="Cancel job"
-                @click="openCancelDialog(job.id)"
                 class="shrink-0"
+                @click="openCancelDialog(job.id)"
               />
               <!-- Chevron -->
               <NuxtLink
                 :to="`/jobs/${job.id}`"
                 class="text-inherit no-underline shrink-0"
               >
-                <i class="pi pi-chevron-right text-[12px] text-koyori-ink-4"></i>
+                <i
+                  class="pi pi-chevron-right text-[12px] text-koyori-ink-4"
+                ></i>
               </NuxtLink>
             </div>
           </div>
@@ -132,23 +186,31 @@
 
         <!-- Recent section -->
         <div class="mt-6">
-          <div class="text-[11px] font-semibold uppercase tracking-[0.06em] text-koyori-ink-4 pb-2">
-            Recent · {{ recentJobs.length }}
+          <div
+            class="text-[11px] font-semibold uppercase tracking-[0.06em] text-koyori-ink-4 pb-2"
+          >
+            Recent · {{ recentJobsDisplay.length }}
           </div>
           <div class="flex flex-col gap-1.5">
             <div
-              v-for="job in recentJobs"
+              v-for="job in recentJobsDisplay"
               :key="job.id"
               class="bg-white border border-koyori-border rounded-[10px] px-4 py-3 flex items-center gap-3 transition-all duration-150 hover:shadow-koyori-sm hover:border-koyori-border-2 opacity-85"
             >
               <div class="shrink-0">
                 <div
                   class="w-[10px] h-[10px] rounded-full"
-                  :class="job.stage === 'done' ? 'bg-koyori-emerald-400' : 'bg-red-500'"
+                  :class="
+                    job.stage === 'done'
+                      ? 'bg-koyori-emerald-400'
+                      : 'bg-red-500'
+                  "
                 ></div>
               </div>
               <div class="flex-1 min-w-0">
-                <div class="text-[13.5px] font-semibold text-koyori-ink truncate">
+                <div
+                  class="text-[13.5px] font-semibold text-koyori-ink truncate"
+                >
                   {{ job.stream }}
                 </div>
                 <div
@@ -160,7 +222,11 @@
               </div>
               <span
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11.5px] font-medium shrink-0"
-                :class="job.stage === 'done' ? 'bg-koyori-emerald-50 text-koyori-emerald-700 border border-koyori-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'"
+                :class="
+                  job.stage === 'done'
+                    ? 'bg-koyori-emerald-50 text-koyori-emerald-700 border border-koyori-emerald-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                "
               >
                 {{ job.stage }}
               </span>
@@ -168,7 +234,9 @@
                 :to="`/jobs/${job.id}`"
                 class="text-inherit no-underline shrink-0"
               >
-                <i class="pi pi-chevron-right text-[12px] text-koyori-ink-4"></i>
+                <i
+                  class="pi pi-chevron-right text-[12px] text-koyori-ink-4"
+                ></i>
               </NuxtLink>
             </div>
           </div>
@@ -181,7 +249,9 @@
       v-if="cancelDialogVisible"
       class="fixed inset-0 bg-black/30 flex items-center justify-center z-[200] backdrop-blur-sm"
     >
-      <div class="bg-white rounded-2xl p-7 max-w-[400px] w-[90%] shadow-koyori-lg">
+      <div
+        class="bg-white rounded-2xl p-7 max-w-[400px] w-[90%] shadow-koyori-lg"
+      >
         <div class="text-[17px] font-bold text-koyori-ink mb-2">
           Cancel this job?
         </div>
@@ -204,14 +274,22 @@
     </div>
 
     <!-- Dev state switcher -->
-    <div class="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-white border border-koyori-border rounded-full px-3 py-1.5 shadow-koyori-md z-50">
-      <span class="text-[11px] text-koyori-ink-3 font-medium mr-1">View state:</span>
+    <div
+      class="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-white border border-koyori-border rounded-full px-3 py-1.5 shadow-koyori-md z-50"
+    >
+      <span class="text-[11px] text-koyori-ink-3 font-medium mr-1"
+        >View state:</span
+      >
       <button
         v-for="s in ['Default', 'Loading', 'Empty', 'Error']"
         :key="s"
-        @click="devState = s"
         class="px-2.5 py-1 rounded-full text-[11px] text-koyori-ink-3 bg-transparent border-none cursor-pointer font-[inherit] transition-all duration-150"
-        :class="devState === s ? '!bg-koyori-pink-100 !text-koyori-pink-700 !font-semibold' : ''"
+        :class="
+          devState === s
+            ? '!bg-koyori-pink-100 !text-koyori-pink-700 !font-semibold'
+            : ''
+        "
+        @click="devState = s"
       >
         {{ s }}
       </button>
@@ -222,24 +300,123 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { DUMMY_JOBS } from "~/composables/koyori-data";
+import {
+  useActiveJobs,
+  useRecentJobs,
+  formatEta,
+  useCancelJob,
+} from "~/composables/jobs";
 
 definePageMeta({ layout: "koyori" });
+
+// UI job type (matches template expectations)
+interface UiJob {
+  id: string;
+  stream: string;
+  stage: string;
+  progress: number;
+  eta: string | null;
+  error: string | null;
+}
 
 const devState = ref("Default");
 const cancelDialogVisible = ref(false);
 const jobToCancel = ref<string | null>(null);
 
-const activeJobs = computed(() =>
+// API queries
+const activeJobsQuery = useActiveJobs();
+const recentJobsQuery = useRecentJobs();
+const cancelJobMutation = useCancelJob();
+
+const toast = useToast();
+
+// Map API job status+stage to UI stage
+function mapApiStage(status: string, stage: string): string {
+  if (status === "pending") return "queued";
+  if (status === "completed") return "done";
+  if (status === "failed") return "failed";
+  // For active/running jobs, map pipeline stage to UI stage
+  if (stage === "transcribe" || stage === "fetch_audio") return "transcribing";
+  if (stage === "diarization") return "transcribing";
+  if (stage === "summarize") return "summarizing";
+  if (stage === "index" || stage === "generate_moments") return "transcribing";
+  return "transcribing";
+}
+
+// Convert API job to UI job
+function toUiJob(
+  job: {
+    title: string;
+    stage: string;
+    overall_progress: number;
+    status: string;
+    error_message: string | null;
+    eta_seconds: number | null;
+  },
+  id: string,
+): UiJob {
+  return {
+    id,
+    stream: job.title,
+    stage: mapApiStage(job.status, job.stage),
+    progress: job.overall_progress,
+    eta: job.eta_seconds !== null ? formatEta(job.eta_seconds) : null,
+    error: job.error_message,
+  };
+}
+
+// Dev mode data (pre-formatted for UI)
+const activeJobsDummy = computed<UiJob[]>(() =>
   DUMMY_JOBS.filter(
     (j) =>
       j.stage === "transcribing" ||
       j.stage === "summarizing" ||
       j.stage === "queued",
+  ).map((j) => ({
+    id: j.id,
+    stream: j.stream,
+    stage: j.stage,
+    progress: j.progress,
+    eta: j.eta,
+    error: j.error,
+  })),
+);
+
+const recentJobsDummy = computed<UiJob[]>(() =>
+  DUMMY_JOBS.filter((j) => j.stage === "done" || j.stage === "failed").map(
+    (j) => ({
+      id: j.id,
+      stream: j.stream,
+      stage: j.stage,
+      progress: j.progress,
+      eta: j.eta,
+      error: j.error,
+    }),
   ),
 );
-const recentJobs = computed(() =>
-  DUMMY_JOBS.filter((j) => j.stage === "done" || j.stage === "failed"),
-);
+
+// Active jobs display
+const activeJobsDisplay = computed<UiJob[]>(() => {
+  if (devState.value !== "Default") {
+    return activeJobsDummy.value;
+  }
+  if (!activeJobsQuery.data.value) return [];
+  return activeJobsQuery.data.value.data.map((job, index) =>
+    toUiJob(job, `active-${index}`),
+  );
+});
+
+// Recent jobs display (completed/failed, limit 5)
+const recentJobsDisplay = computed<UiJob[]>(() => {
+  if (devState.value !== "Default") {
+    return recentJobsDummy.value;
+  }
+  if (!recentJobsQuery.data.value) return [];
+  return recentJobsQuery.data.value.data
+    .filter((job) => job.status === "completed" || job.status === "failed")
+    .slice(0, 5)
+    .map((job, index) => toUiJob(job, `recent-${index}`));
+});
 
 function openCancelDialog(id: string) {
   jobToCancel.value = id;
@@ -247,7 +424,22 @@ function openCancelDialog(id: string) {
 }
 
 function confirmCancel() {
-  cancelDialogVisible.value = false;
-  jobToCancel.value = null;
+  if (!jobToCancel.value) return;
+  cancelJobMutation.mutate(jobToCancel.value, {
+    onSuccess: () => {
+      cancelDialogVisible.value = false;
+      jobToCancel.value = null;
+    },
+    onError: (err) => {
+      cancelDialogVisible.value = false;
+      jobToCancel.value = null;
+      toast.add({
+        severity: "error",
+        summary: "Failed to cancel job",
+        detail: err instanceof Error ? err.message : "Unknown error",
+        life: 5000,
+      });
+    },
+  });
 }
 </script>

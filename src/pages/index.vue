@@ -13,7 +13,12 @@
         </p>
       </div>
       <div class="flex gap-2 items-center">
-        <PGhostButton icon="pi pi-refresh" size="small" aria-label="Refresh" />
+        <PGhostButton
+          icon="pi pi-refresh"
+          size="small"
+          aria-label="Refresh"
+          @click="refresh()"
+        />
         <NuxtLink to="/add">
           <PButton
             icon="pi pi-plus"
@@ -132,24 +137,24 @@
           <div class="ml-auto flex gap-2 items-center">
             <div class="flex bg-koyori-surface-2 rounded-lg p-0.5 gap-px">
               <button
-                @click="viewMode = 'grid'"
                 class="p-[5px_8px] rounded-md border-none cursor-pointer transition-all duration-150 font-[inherit]"
                 :class="
                   viewMode === 'grid'
                     ? 'bg-white text-koyori-ink shadow-koyori-sm'
                     : 'bg-transparent text-koyori-ink-3'
                 "
+                @click="viewMode = 'grid'"
               >
                 <i class="pi pi-th-large text-[13px]"></i>
               </button>
               <button
-                @click="viewMode = 'list'"
                 class="p-[5px_8px] rounded-md border-none cursor-pointer transition-all duration-150 font-[inherit]"
                 :class="
                   viewMode === 'list'
                     ? 'bg-white text-koyori-ink shadow-koyori-sm'
                     : 'bg-transparent text-koyori-ink-3'
                 "
+                @click="viewMode = 'list'"
               >
                 <i class="pi pi-list text-[13px]"></i>
               </button>
@@ -283,7 +288,10 @@
                 <div
                   class="text-[12px] text-koyori-ink-3 mt-0.5 font-[JetBrains_Mono]"
                 >
-                  {{ stream.date }}<template v-if="stream.duration"> · {{ stream.duration }}</template>
+                  {{ stream.date
+                  }}<template v-if="stream.duration">
+                    · {{ stream.duration }}</template
+                  >
                 </div>
               </div>
               <div class="flex gap-1 shrink-0">
@@ -323,12 +331,9 @@
 import { ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import dayjs from "dayjs";
-import {
-  DUMMY_TOPICS,
-  DUMMY_TAGS,
-  useToneGradient,
-} from "~/composables/koyori-data";
+import { useToneGradient } from "~/composables/koyori-data";
 import { useStreams } from "~/composables/api";
+import { formatDuration } from "~/utils/duration";
 
 definePageMeta({ layout: "koyori" });
 
@@ -336,19 +341,26 @@ const { t } = useI18n();
 
 const viewMode = ref<"grid" | "list">("grid");
 const searchQuery = ref("");
-const selectedTopic = ref<string | null>(null);
-const selectedTag = ref<string | null>(null);
+// const selectedTopic = ref<string | null>(null);
+// const selectedTag = ref<string | null>(null);
 const sortOrder = ref<"newest" | "oldest">("newest");
 const devState = ref("Default");
 
-const { data: streamsData, isLoading, isError } = useStreams(sortOrder);
+const {
+  data: streamsData,
+  isLoading,
+  isError,
+  refetch,
+} = useStreams(sortOrder, searchQuery);
+
+const refresh = () => refetch();
 
 const streams = computed(() =>
   (streamsData.value?.data ?? []).map((s) => ({
     id: s.id,
     title: s.title,
     date: dayjs(s.streamed_at).format("YYYY-MM-DD"),
-    duration: formatDuration((s as any).duration_seconds),
+    duration: formatDuration(s.duration_seconds ?? 0),
     tone: "pink",
     tags: [] as string[],
     topics: [] as string[],
@@ -358,45 +370,29 @@ const streams = computed(() =>
   })),
 );
 
-function formatDuration(seconds: number): string {
-  if (!seconds) return "";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
+// function toggleTopic(id: string) {
+//   selectedTopic.value = selectedTopic.value === id ? null : id;
+// }
 
-function toggleTopic(id: string) {
-  selectedTopic.value = selectedTopic.value === id ? null : id;
-}
+// function toggleTag(tag: string) {
+//   selectedTag.value = selectedTag.value === tag ? null : tag;
+// }
 
-function toggleTag(tag: string) {
-  selectedTag.value = selectedTag.value === tag ? null : tag;
-}
-
-function toneClass(tone: string): string {
-  const classes: Record<string, string> = {
-    pink: "text-koyori-pink-500",
-    mint: "text-koyori-emerald-400",
-    sage: "text-green-500",
-    sky: "text-blue-500",
-    lavender: "text-violet-600",
-    peach: "text-orange-500",
-  };
-  return classes[tone] ?? "text-koyori-pink-500";
-}
+// function toneClass(tone: string): string {
+//   const classes: Record<string, string> = {
+//     pink: "text-koyori-pink-500",
+//     mint: "text-koyori-emerald-400",
+//     sage: "text-green-500",
+//     sky: "text-blue-500",
+//     lavender: "text-violet-600",
+//     peach: "text-orange-500",
+//   };
+//   return classes[tone] ?? "text-koyori-pink-500";
+// }
 
 const filteredStreams = computed(() => {
   if (devState.value === "Empty") return [];
-  let list = streams.value;
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase();
-    list = list.filter((s) => s.title.toLowerCase().includes(q));
-  }
-  return list;
+  return streams.value;
 });
 </script>
 

@@ -1,4 +1,4 @@
-import { isAxiosError } from 'axios'
+import { isAxiosError } from "axios";
 
 /**
  * Parses error from SDK/API calls and extracts a human-readable message
@@ -21,17 +21,20 @@ import { isAxiosError } from 'axios'
  * }
  * ```
  */
-export function parseSDKError(err: unknown, fallback = 'An unexpected error occurred'): string {
+export function parseSDKError(
+  err: unknown,
+  fallback = "An unexpected error occurred",
+): string {
   // Check if it's an Axios error with response data message
   if (isAxiosError(err) && err.response?.data?.message) {
-    return err.response.data.message as string
+    return err.response.data.message as string;
   }
 
   // Check if it's a standard Error instance
   if (err instanceof Error && err.message) {
-    return err.message
+    return err.message;
   }
 
   // Fallback for unknown error types
-  return fallback
+  return fallback;
 }

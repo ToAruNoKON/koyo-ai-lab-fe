@@ -12,7 +12,7 @@ Nuxt 4 application with TypeScript, PrimeVue, and Ory Kratos authentication.
 - **Runtime**: Bun
 - **UI Framework**: PrimeVue 4 with volt (tailwind integration) + Tailwind CSS 4
 - **State Management**: Pinia + Vue Query (@peterbud/nuxt-query)
-- **Backend Integration**: @hubelia/mercuri_be SDK
+- **Backend Integration**: @toarunokon/koyo-ai-lab-sdk (located in node_modules)
 - **Validation**: Zod schemas with PrimeVue Forms integration
 - **Internationalization**: @nuxtjs/i18n (English/French)
 
@@ -55,23 +55,29 @@ Always use the `validation-expert` agent for validation.
 ## Date Handling Guidelines
 
 Date Library: Day.js
-  - Use Day.js for all date parsing, formatting, and manipulation
-  - Always prefer a localized date format like LL
+
+- Use Day.js for all date parsing, formatting, and manipulation
+- Always prefer a localized date format like LL
 
 ## Primevue (volt) components
+
 Primevue (volt) components are auto-imported with the P prefix. For example, PButton.
 
 Only for the button component, instead of using the severity property, you must use the corresponding severity component. (e.g. : PSecondaryButton)
 
 ## Encoding
+
 Be careful with the french encoding for special characters like "é"
 
 ## Composables (~/src/composables)
+
 Prefer to group your composables inside a single file if they are related. Never create a file only for one composable.
 E.g. : instead of naming your file `useAnalyzeDownload`, name the file `download` and put all the download related composable inside it.
+
 - When you create a mutation composable with a toast for the error/success feedback, don't forget to add your translations to the global i18n translations (i18n/locales)
 
-## Best practices 
+## Best practices
+
 - Always consider that user provided data is unexpected. For a datatable with a title property, make sure to add a max width and truncate the text if it exceeds it.
 - Computed should always be readonly. Never use a computed with a setter.
 - If a page has multiple tabs, and that a tab needs backend data, always fetch it lazily if we don't need it at load.
@@ -95,17 +101,21 @@ E.g. : instead of naming your file `useAnalyzeDownload`, name the file `download
 ### Available Agents
 
 #### page-expert
+
 Use this agent when you want to create a new page from scratch.
 
 #### validation-expert
+
 Use this agent to implement UI validation with Zod schemas and PrimeVue Forms.
 
 #### ui-design-expert
+
 Use this agent to implement UIs with Tailwind, PrimeVue Volt, and Vue components.
 
 ### When No Agent Exists
 
 If the task doesn't fit any available agent, you MUST ask:
+
 > "This task requires [describe task]. No specialized agent exists for this. May I proceed without delegating to an agent?"
 
 Only proceed with direct implementation after explicit user approval.

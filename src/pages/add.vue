@@ -117,8 +117,8 @@
           </div>
           <!-- Change URL link -->
           <button
-            @click="phase = 'input'"
             class="text-[12px] text-koyori-pink-500 bg-transparent border-none cursor-pointer p-0 font-[inherit] underline"
+            @click="phase = 'input'"
           >
             ← Change URL
           </button>

@@ -98,8 +98,7 @@
             >{{ activeJobCount }}</span
           >
         </NuxtLink>
-
-              </nav>
+      </nav>
 
       <!-- Language switcher -->
       <div class="px-4 pb-4 pt-3 border-t border-koyori-border">
@@ -107,13 +106,13 @@
           <button
             v-for="code in localeCodes"
             :key="code"
-            @click="setLocale(code as 'en' | 'ja')"
             class="flex-1 px-2 py-1 rounded-2xl border-none text-[11px] cursor-pointer transition-all duration-150 font-[inherit]"
             :class="
               currentLocale === code
                 ? 'bg-white text-koyori-ink font-semibold shadow-koyori-sm'
                 : 'bg-transparent text-koyori-ink-3 font-normal'
             "
+            @click="setLocale(code as 'en' | 'ja')"
           >
             {{ code.toUpperCase() }}
           </button>
