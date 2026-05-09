@@ -1,19 +1,30 @@
 #!/usr/bin/env bash
-# Stop hook: run eslint and typecheck on changed files. Exit 2 with a report
-# if anything needs fixing so asyncRewake wakes the model.
+# Stop hook: run eslint and typecheck on files Claude touched this session.
+# Exit 2 with a report if anything needs fixing so asyncRewake wakes the model.
 
-cd "$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+INPUT=$(cat)
+SESSION=$(grep -oP '"session_id"\s*:\s*"\K[^"]+' <<< "$INPUT" | head -1)
 
-FILES=$( { git diff --name-only HEAD 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null; } \
+# Cleanup session lists older than 7 days
+find /tmp -maxdepth 1 -name 'claude-touched-*.txt' -mtime +7 -delete 2>/dev/null
+
+[ -z "$SESSION" ] && exit 0
+
+TOUCHED="/tmp/claude-touched-$SESSION.txt"
+[ ! -s "$TOUCHED" ] && exit 0
+
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$ROOT" || exit 0
+
+FILES=$(sort -u "$TOUCHED" \
   | grep -E '\.(ts|tsx|js|jsx|mjs|cjs|vue)$' \
-  | sort -u \
   | while IFS= read -r f; do [ -f "$f" ] && echo "$f"; done)
 
 [ -z "$FILES" ] && exit 0
 
 ISSUES=""
 
-ESLINT_OUT=$(echo "$FILES" | xargs npx eslint 2>&1)
+ESLINT_OUT=$(echo "$FILES" | xargs ./node_modules/.bin/eslint 2>&1)
 if [ $? -ne 0 ]; then
   ISSUES="ESLint issues:
 $ESLINT_OUT
@@ -29,7 +40,7 @@ $TC_OUT
 fi
 
 if [ -n "$ISSUES" ]; then
-  echo "Found issues in changed files. Please fix them:
+  echo "Found issues in files you touched this session. Please fix them:
 $ISSUES"
   exit 2
 fi
