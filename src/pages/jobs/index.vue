@@ -8,12 +8,7 @@
         <h2 class="text-[18px] font-bold text-koyori-ink m-0 leading-tight">
           Jobs
         </h2>
-        <p class="text-[13px] text-koyori-ink-3 m-0 mt-0.5">
-          <template v-if="devState === 'Default' && activeJobsQuery.data.value">
-            {{ activeJobsQuery.data.value.total }} active
-          </template>
-          <template v-else> 2 active · 1 queued [Dummy] </template>
-        </p>
+        <p class="text-[13px] text-koyori-ink-3 m-0 mt-0.5">Jobs list</p>
       </div>
       <div class="flex gap-2">
         <NuxtLink to="/add">
@@ -24,21 +19,13 @@
 
     <!-- Content -->
     <div class="flex-1 p-6 px-8 max-w-[900px] w-full mx-auto">
-      <!-- Dev warning banner -->
-      <div
-        v-if="devState !== 'Default'"
-        class="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-[12.5px] font-medium px-3 py-2 rounded-lg mb-5"
-      >
-        <i class="pi pi-exclamation-triangle text-[13px]"></i>
-        Showing dummy data — backend not yet connected
-      </div>
-
       <!-- Loading state -->
       <template
         v-if="
           devState === 'Loading' ||
           (devState === 'Default' &&
             (activeJobsQuery.isLoading.value ||
+              pendingJobsQuery.isLoading.value ||
               recentJobsQuery.isLoading.value))
         "
       >
@@ -55,7 +42,9 @@
       <template
         v-else-if="
           devState === 'Error' ||
-          (devState === 'Default' && activeJobsQuery.isError.value)
+          activeJobsQuery.isError.value ||
+          pendingJobsQuery.isError.value ||
+          recentJobsQuery.isError.value
         "
       >
         <div class="bg-red-50 border border-red-200 rounded-xl p-5 text-center">
@@ -75,6 +64,8 @@
           (devState === 'Default' &&
             activeJobsQuery.data.value &&
             activeJobsQuery.data.value.data.length === 0 &&
+            pendingJobsQuery.data.value &&
+            pendingJobsQuery.data.value.data.length === 0 &&
             recentJobsQuery.data.value &&
             recentJobsQuery.data.value.data.length === 0)
         "
@@ -151,6 +142,13 @@
               >
                 {{ job.stage }}
               </span>
+              <!-- API stage -->
+              <span
+                v-if="job.apiStage"
+                class="text-[11px] text-koyori-ink-4 shrink-0"
+              >
+                {{ job.apiStage }}
+              </span>
               <!-- Progress % + eta -->
               <div class="text-right shrink-0 min-w-[70px]">
                 <div
@@ -171,6 +169,58 @@
                 class="shrink-0"
                 @click="openCancelDialog(job.id)"
               />
+              <!-- Chevron -->
+              <NuxtLink
+                :to="`/jobs/${job.id}`"
+                class="text-inherit no-underline shrink-0"
+              >
+                <i
+                  class="pi pi-chevron-right text-[12px] text-koyori-ink-4"
+                ></i>
+              </NuxtLink>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pending section -->
+        <div class="mt-6">
+          <div
+            class="text-[11px] font-semibold uppercase tracking-[0.06em] text-koyori-ink-4 pb-2"
+          >
+            Pending · {{ pendingJobsDisplay.length }}
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <div
+              v-for="job in pendingJobsDisplay"
+              :key="job.id"
+              class="bg-white border border-koyori-border rounded-[10px] px-4 py-3 flex items-center gap-3 transition-all duration-150 hover:shadow-koyori-sm hover:border-koyori-border-2"
+            >
+              <!-- Status dot -->
+              <div class="shrink-0">
+                <div class="w-[10px] h-[10px] rounded-full bg-amber-400"></div>
+              </div>
+              <!-- Stream name -->
+              <div class="flex-1 min-w-0">
+                <div
+                  class="text-[13.5px] font-semibold text-koyori-ink truncate"
+                >
+                  {{ job.stream }}
+                </div>
+                <div class="text-[12px] text-koyori-ink-4 mt-0.5">In queue</div>
+              </div>
+              <!-- Stage chip (amber styling) -->
+              <span
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11.5px] font-medium shrink-0 bg-koyori-surface-2 text-koyori-ink-3 border border-koyori-border"
+              >
+                {{ job.stage }}
+              </span>
+              <span
+                v-if="job.apiStage"
+                class="text-[11px] text-koyori-ink-4 shrink-0"
+              >
+                {{ job.apiStage }}
+              </span>
+              <!-- No progress bar for pending jobs -->
               <!-- Chevron -->
               <NuxtLink
                 :to="`/jobs/${job.id}`"
@@ -229,6 +279,12 @@
                 "
               >
                 {{ job.stage }}
+              </span>
+              <span
+                v-if="job.apiStage"
+                class="text-[11px] text-koyori-ink-4 shrink-0"
+              >
+                {{ job.apiStage }}
               </span>
               <NuxtLink
                 :to="`/jobs/${job.id}`"
@@ -302,6 +358,7 @@ import { ref, computed } from "vue";
 import { DUMMY_JOBS } from "~/composables/koyori-data";
 import {
   useActiveJobs,
+  usePendingJobs,
   useRecentJobs,
   formatEta,
   useCancelJob,
@@ -314,6 +371,7 @@ interface UiJob {
   id: string;
   stream: string;
   stage: string;
+  apiStage: string;
   progress: number;
   eta: string | null;
   error: string | null;
@@ -325,6 +383,7 @@ const jobToCancel = ref<string | null>(null);
 
 // API queries
 const activeJobsQuery = useActiveJobs();
+const pendingJobsQuery = usePendingJobs();
 const recentJobsQuery = useRecentJobs();
 const cancelJobMutation = useCancelJob();
 
@@ -343,6 +402,12 @@ function mapApiStage(status: string, stage: string): string {
   return "transcribing";
 }
 
+// Map inactive status to pending stage
+function mapInactiveToPending(status: string, stage: string): string {
+  if (status === "inactive") return "pending";
+  return mapApiStage(status, stage);
+}
+
 // Convert API job to UI job
 function toUiJob(
   job: {
@@ -359,6 +424,30 @@ function toUiJob(
     id,
     stream: job.title,
     stage: mapApiStage(job.status, job.stage),
+    apiStage: job.stage,
+    progress: job.overall_progress,
+    eta: job.eta_seconds !== null ? formatEta(job.eta_seconds) : null,
+    error: job.error_message,
+  };
+}
+
+// Convert API job to UI job for pending section (inactive -> pending)
+function toPendingUiJob(
+  job: {
+    title: string;
+    stage: string;
+    overall_progress: number;
+    status: string;
+    error_message: string | null;
+    eta_seconds: number | null;
+  },
+  id: string,
+): UiJob {
+  return {
+    id,
+    stream: job.title,
+    stage: mapInactiveToPending(job.status, job.stage),
+    apiStage: job.stage,
     progress: job.overall_progress,
     eta: job.eta_seconds !== null ? formatEta(job.eta_seconds) : null,
     error: job.error_message,
@@ -376,6 +465,19 @@ const activeJobsDummy = computed<UiJob[]>(() =>
     id: j.id,
     stream: j.stream,
     stage: j.stage,
+    apiStage: j.stage,
+    progress: j.progress,
+    eta: j.eta,
+    error: j.error,
+  })),
+);
+
+const pendingJobsDummy = computed<UiJob[]>(() =>
+  DUMMY_JOBS.filter((j) => j.stage === "queued").map((j) => ({
+    id: j.id,
+    stream: j.stream,
+    stage: j.stage,
+    apiStage: j.stage,
     progress: j.progress,
     eta: j.eta,
     error: j.error,
@@ -388,6 +490,7 @@ const recentJobsDummy = computed<UiJob[]>(() =>
       id: j.id,
       stream: j.stream,
       stage: j.stage,
+      apiStage: j.stage,
       progress: j.progress,
       eta: j.eta,
       error: j.error,
@@ -406,14 +509,25 @@ const activeJobsDisplay = computed<UiJob[]>(() => {
   );
 });
 
-// Recent jobs display (completed/failed, limit 5)
+// Pending jobs display
+const pendingJobsDisplay = computed<UiJob[]>(() => {
+  if (devState.value !== "Default") {
+    return pendingJobsDummy.value;
+  }
+  if (!pendingJobsQuery.data.value) return [];
+  return pendingJobsQuery.data.value.data.map((job, index) =>
+    toPendingUiJob(job, `pending-${index}`),
+  );
+});
+
+// Recent jobs display (non-active, limit 5)
 const recentJobsDisplay = computed<UiJob[]>(() => {
   if (devState.value !== "Default") {
     return recentJobsDummy.value;
   }
   if (!recentJobsQuery.data.value) return [];
   return recentJobsQuery.data.value.data
-    .filter((job) => job.status === "completed" || job.status === "failed")
+    .filter((job) => job.status !== "active")
     .slice(0, 5)
     .map((job, index) => toUiJob(job, `recent-${index}`));
 });

@@ -22,7 +22,7 @@
     "@primevue/forms": "4.5.5",
     "@primevue/nuxt-module": "4.5.5",
     "@tailwindcss/vite": "4.2.2",
-    "@toarunokon/koyo-ai-lab-sdk": "0.0.4",
+    "@toarunokon/koyo-ai-lab-sdk": "0.0.6",
     "@vue/language-core": "^3.2.7",
     "axios": "1.15.0",
     "dayjs": "1.11.20",

@@ -185,7 +185,7 @@
               icon="pi pi-play"
               size="small"
               :loading="isGenerating"
-              @click.prevent="generateTranscription(streamId)"
+              @click.prevent="triggerTranscription"
             />
           </div>
         </div>
@@ -595,6 +595,7 @@ import {
 import { useStream } from "~/composables/api";
 import { useGenerateTranscription } from "~/composables/jobs";
 import { formatDuration } from "~/utils/duration";
+import { parseSDKError } from "~/utils/error";
 
 definePageMeta({ layout: "koyori" });
 
@@ -608,6 +609,7 @@ const {
 } = useStream(streamId);
 const { mutate: generateTranscription, isPending: isGenerating } =
   useGenerateTranscription();
+const toast = useToast();
 const streamErrorStatus = computed(
   () =>
     (streamError.value as { response?: { status?: number } })?.response?.status,
@@ -668,6 +670,28 @@ const moreMenuItems = [
   { label: "Edit tags", icon: "pi pi-tag" },
 ];
 
+function triggerTranscription() {
+  generateTranscription(streamId.value, {
+    onSuccess: () => {
+      toast.add({
+        severity: "success",
+        summary: "Transcription started",
+        detail:
+          "Your video is being processed. Check the Jobs page for progress.",
+        life: 5000,
+      });
+    },
+    onError: (err) => {
+      toast.add({
+        severity: "error",
+        summary: "Failed to start transcription",
+        detail: parseSDKError(err, "Failed to start transcription"),
+        life: 5000,
+      });
+    },
+  });
+}
+
 function handleMoreMenu(item: {
   label: string;
   icon: string;
@@ -675,7 +699,7 @@ function handleMoreMenu(item: {
 }) {
   showMoreMenu.value = false;
   if (item.label === "Regenerate transcription…") {
-    generateTranscription(streamId.value);
+    triggerTranscription();
   } else if (item.label === "Copy stream link") {
     navigator.clipboard.writeText(stream.value?.source_url ?? "");
   }

@@ -25,9 +25,14 @@ export function parseSDKError(
   err: unknown,
   fallback = "An unexpected error occurred",
 ): string {
-  // Check if it's an Axios error with response data message
+  // Axios error with response data message
   if (isAxiosError(err) && err.response?.data?.message) {
     return err.response.data.message as string;
+  }
+
+  // Axios error with response data detail (e.g., "A job is already in progress")
+  if (isAxiosError(err) && err.response?.data?.detail) {
+    return err.response.data.detail as string;
   }
 
   // Check if it's a standard Error instance

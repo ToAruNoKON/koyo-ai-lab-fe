@@ -1,5 +1,5 @@
 import {
-  readJobsJobsGet,
+  readJobsJobsPost,
   cancelJobJobsJobIdCancelPost,
   readJobJobsJobIdGet,
   generateTranscriptionTranscriptionsGenerateStreamIdPost,
@@ -17,15 +17,14 @@ export function useActiveJobs() {
   return useQuery<ListJobsResponse>({
     queryKey: ["jobs", "active"],
     queryFn: async () => {
-      const result = await readJobsJobsGet({
+      const result = await readJobsJobsPost({
         baseUrl,
-        query: {
-          status: "active",
-        },
+        body: { status: ["active"] },
       });
       if (result.error) throw result.error;
       return result.data!;
     },
+    refetchInterval: 10000,
   });
 }
 
@@ -36,16 +35,32 @@ export function useRecentJobs() {
   return useQuery<ListJobsResponse>({
     queryKey: ["jobs", "recent"],
     queryFn: async () => {
-      const result = await readJobsJobsGet({
+      const result = await readJobsJobsPost({
         baseUrl,
-        query: {
-          limit: 5,
-          sort: "newest",
-        },
+        body: { status: ["completed", "failed"], limit: 5, sort: "newest" },
       });
       if (result.error) throw result.error;
       return result.data!;
     },
+    refetchInterval: 10000,
+  });
+}
+
+export function usePendingJobs() {
+  const config = useRuntimeConfig();
+  const baseUrl = config.public.apiBaseUrl as string;
+
+  return useQuery<ListJobsResponse>({
+    queryKey: ["jobs", "pending"],
+    queryFn: async () => {
+      const result = await readJobsJobsPost({
+        baseUrl,
+        body: { status: ["pending"], limit: 5, sort: "newest" },
+      });
+      if (result.error) throw result.error;
+      return result.data!;
+    },
+    refetchInterval: 10000,
   });
 }
 

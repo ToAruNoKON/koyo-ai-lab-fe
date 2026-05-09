@@ -1,5 +1,6 @@
 <template>
   <div class="font-[Manrope] bg-koyori-bg min-h-screen flex">
+    <PToast />
     <!-- Sidebar -->
     <aside
       class="w-60 min-w-60 bg-white border-r border-koyori-border flex flex-col h-screen sticky top-0 overflow-y-auto"
